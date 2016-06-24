@@ -1,0 +1,242 @@
+
+                 ===========================================
+                               RELEASE NOTES
+                                    FOR
+                         INFORMIX-SE Version 7.25.UC1 
+                               DATE:  DATE: 07 Mar 2001
+                 ===========================================
+
+
+TABLE OF CONTENTS
+
+I.      OVERVIEW OF RELEASE NOTES
+
+II.     PRODUCTS CONTAINED IN VERSION 7.25.UC1
+
+III.    NEW FEATURES
+           Increased Maximum File Size Limits
+           New Transaction Log Format
+           New Error Messages
+
+IV.     MIGRATION ISSUES
+
+V.      CAVEATS
+           Incompatibilities with earlier Transaction Logs
+
+VI.     DEFECTS ADDRESSED IN THIS RELEASE
+
+
+
+
+
+
+I.      OVERVIEW OF RELEASE NOTES
+
+        The purpose of these release notes is to make you aware of
+        changes in products that might affect existing applications.
+        The release notes contain information on changes from previous
+        versions, known bugs, and workarounds. Bug numbers are assigned
+        to known defects to assist you in identifying the defects to
+        Customer Support personnel.
+
+        This release notes document is not intended to be all-inclusive;
+        it is a tool to assist you in the update process. Please consult
+        Informix product manuals for additional information on product
+        features and for clarification of product behavior.
+
+        Note that these release notes apply only to Version 7.25.UC1.
+        They contain information you need to know when you upgrade
+        from Version 7.2x.
+
+
+
+II.     PRODUCTS CONTAINED IN VERSION 7.25.UC1
+
+        INFORMIX PRODUCTS
+        =================
+        The 7.25 release contains following product:
+
+        Product Name                            Generic Name
+        ------------                            ------------
+        INFORMIX-SE                          Database Server Product
+
+
+
+III.    NEW FEATURES
+
+
+        Increased Maximum File Size Limits
+        ==================================
+
+        INFORMIX-SE, Version 7.25.UC1 expands storage capabilities
+        of the database.  INFORMIX-SE, Version 7.24 (and earlier releases)
+        supported data files, index files, audit files and transaction log
+        files of up to only 2GB. This limit on file sizes is increased.
+        If file size is constrained by your available system hardware,
+        your actual limit might be lower.
+
+        LIMITS IN INFORMIX-SE
+        ---------------------
+
+        Number of indexes................................No logical limit
+        Max Bytes per index...........................................120
+        Max number of columns in composite index........................8
+        Number of tables.................................No logical limit
+        Row size...................................................32,511
+        Maximum number of rows..............................2,147,483,647
+        Maximum data file size.................................1TB (2^40)
+        Maximum index file size................................1TB (2^40)
+        Maximum transaction log file size......................8EB (2^63)
+        Maximum audit trail file size..........................8EB (2^63)
+
+        Note: The increased file size limits, mentioned above, are
+              applicable only for platforms and operating systems that
+              support special APIs for accessing large files. For more
+              details, check the Machine Notes file.
+
+        New Transaction Log Format
+        ==========================
+
+        Transaction-file records contain a fixed-length header
+        and other information that depends on the transaction type.
+        The first record header starts at an offset of 4 bytes
+        from the beginnig of the file. (The first 4 bytes of the
+        file contain a unique reserved number).
+
+        Byte     Number
+        Offset   of Bytes          Item
+        ======   ========          ======================
+          0       2                Length of log record
+          2       2                Transaction type
+          4       4 (was 2 bytes)  Transaction identification
+          8       2                User Identification
+         10       4                Transaction time. measured as
+                                   the  number of seconds since
+                                   midnight, 1/1/1970
+         14       8 (was 4 bytes)  Offset to previous log record
+         22 + L   8 or 4 (was 4)   Length of previous log record
+
+
+
+        New Error Messages
+        ==================
+
+        Two new error messages are introduced in this release.
+
+        ERROR   DESCRIPTION
+        =====   ===========
+        -21501  ISAM error:  Record Overflow : Unable to Insert a Row.
+                SE/C-ISAM was unable to insert a row because the file
+                already contains  2^31 -1 (2147483647) rows.
+                You have reached the maximum number of rows for this
+                file.  Delete some rows before you add more rows.
+
+        -21502  ISAM error:  Incompatible log file format.
+                The transaction log file format is incompatible with
+                the SE/C-ISAM version being used.  This could be
+                because the transaction log file was created using
+                an older version of SE/C-ISAM.
+                Ensure that the transaction log file is used by the
+                same version of SE/C-ISAM that created it, so that
+                the log file format is compatible.
+
+
+
+IV.     MIGRATION ISSUES
+
+        This release is a seamless upgrade for INFORMIX-SE,
+        Version 7.2x customers. There are no SQL syntax changes or
+        API changes from the previous version of INFORMIX-SE.
+        There are no changes in the format of data files, index files
+        or audit trail files. Because of the changes in the transaction
+        log file format, however, this version cannot open transaction
+        log files that contain transaction records in the legacy format.
+
+
+
+V.      CAVEATS
+
+        Incompatibilities with Earlier Transaction Logs
+        ===============================================
+
+        Because of file format differences between Version 7.25.UC1
+        and Version 7.24 (and earlier), INFORMIX-SE 7.25.UC1
+        cannot recover data from a transaction log file
+        that was created using older versions of INFORMIX-SE.
+        This version of INFORMIX-SE cannot read transaction log files
+        that were written in the old format, and older versions of
+        INFORMIX-SE cannot read transaction logs in the new format.
+
+        Use of the selog utility provided with INFORMIX-SE Version 7.24
+        or earlier is not supported for files created by Version 7.25.UC1.
+
+        Any transaction log file that combines records in both the
+        old and new formats is unreadable by any version of INFORMIX-SE,
+        and therefore cannot be used to recover data. If an older
+        version of INFORMIX-SE writes legacy-format records into a
+        Version 7.25.UC1 transaction log, then that log file becomes
+        corrupt.
+
+
+
+VI.     DEFECTS ADDRESSED IN THIS RELEASE
+
+        NUMBER  SHORT DESCRIPTION
+        ======  =======================================================
+
+         89097  LEGACY: DATE() WHEN GIVEN '0'(STRING ZERO) AS PARAMTER
+                CAUSES -1206
+
+         95047  SELOG -D MM/DD/199Y MM/DD/2000 WILL NOT DISPLAY ENTRIES
+                STARTING  FROM YEAR 2000
+
+        101747  DATE LITERAL INTERPRETATION IN TRIGGER BODY
+                IS DONE INCORRECTLY
+
+        101848  DATE LITERAL INTERPRETATION IN PROCEDURE BODY
+                IS DONE INCORRECTLY
+
+        104060  EXECUTE PROCEDURE RETURNS 1218 WHILE CONVERTING STRING TO DATE
+                IN A DATABASE
+
+        108092  Y2K PROBLEM: CHANGING INTERPRETATION OF DATE AND DATETIME
+                VALUES COULD RESULT IN UNEXPECTED AND/OR WRONG RESULTS
+
+        112611  A CONCATENATED SET OF STRINGS, QUERIED FROM A VIEW,
+                RETURNS GARBAGE
+
+        114129  Y2K QAINT: INSERTION FAILS WITH ERROR -530
+                CONSTRAINT VIOLATION EVEN WHEN CONSTRAINT CONDITIONS ARE MET
+
+        114533  SETTING GL_DATE FORMAT STRING TO ANYTHING GREATER THAN
+                20 CHARACTERS, RESULTS IN -1218 STRING TO DATE CONVERSION
+                ERROR ON INSERTS, NOT SELECTS
+
+        115202  Y2K QAINT: SAME QUERY RETURNS DIFFERENT RESULT IN
+                ESQLC AND DBACCESS
+
+        115351  INCORRECT BEHAVIOR WHILE HANDLING DATE WITH DIFFERENT
+                SETTING FOR DBDATE
+
+        119173  DBCENTURY AND DBDATE IS NOT WORKING IN  CONJUNCTION WITH
+                DATE IN CHECK CONSTRAINT, STORED PROCEDURES, AND TRIGGERS
+
+        119911  SIX DIGIT VERSION NUMBER FOR THE DBCENTURY FIXES.
+
+        124082  STANDARD ENGINE: SELECT...WHERE ... NOT IN (SELECT ...)
+                DOESN'T RETURN ALL THE ROWS SATISFYING THE CONDITION
+
+        124653  CRASH DOING PUT CURSOR INSERT ON FREED STATEMENT/CURSOR
+
+        123529  CONCATENATED COLUMN (USING ||) IN SELECT RETURNS BLANK
+                OR NULL IF SELECT INCLUDES MORE THAN ONE TABLE AND GROUP
+                BY COLUMNS ARE IN CERTAIN ORDERS
+
+        130138  FOR SE SERVER DBCENTURY AND DBDATE IS NOT WORKING IN
+                CONJUNCTION WITH DATE IN CHECK CONSTRAINT, STORED PROCEDURES
+                AND TRIGGERS
+
+        131624  ESQL/C PROGRAMS CORE DUMP WHEN DECLARING CURSOR (_IQCDDCL)
+                OR ELSEWHERE BECAUSE FUNCTIONS DO NOT HAVE PROTOTYPES WHEN
+                COMPILING NON-ANSI
+

@@ -1,0 +1,443 @@
+ 
+                 ===========================================
+                               RELEASE NOTES
+                                    FOR
+                         INFORMIX C-ISAM Version 7.25.UC1 
+                         PRODUCT RELEASE DATE: 07 Mar 2001
+                 ===========================================
+ 
+
+TABLE OF CONTENTS
+
+I.  NEW FEATURES IN INFORMIX C-ISAM VERSION 7.25 
+    A. Increased Maximum File Size Limits
+    B. Enhancements to C-ISAM Function Library
+          1. Changer to isindexinfo() Function
+          2. New isdictinfo() and iskeyinfo() Functions
+    C. New Error Messages
+    D. New Transaction Log Format
+
+II. INSTALLATION AND REVERSION
+    A. Migration to C-ISAM 7.25
+    B. Reversion to Earlier Release Versions
+
+III. CAVEATS
+    A. Incompatibility with Earlier Transaction Logs
+    B. ROWID and Indexes 
+    C. Open C-ISAM Bugs
+
+IV. PTS BUGS FIXED IN THIS RELEASE
+    A. Software Defects
+    B. Documentation Defects
+
+ ----------------------------------------------------
+
+
+I.  NEW FEATURES IN INFORMIX C-ISAM VERSION 7.25 
+
+Indexed Sequential Access Method (ISAM) file management 
+technology was the predecessor to today's RDBMS, and it 
+continues to be a viable environment for many companies.
+It provides fast and efficient access to data, because 
+it does not require the overhead of an RDBMS layer.
+
+Informix C-ISAM Version 7.25 expands storage capabilities 
+of existing C-ISAM applications without requiring changes 
+to the applications.  Applications created for earlier
+versions of C-ISAM must be recompiled, however, before 
+they can use the new Version 7.25 features.
+
+A. Increased Maximum File Size Limits
+
+This release introduces the following increased theoretical 
+limits on file sizes. (Your actual limits might be lower, 
+if they are constrained by your available system hardware.)
+
+In the following table, values are in bytes, and "PREVIOUS
+LIMIT" refers to C-ISAM Version 7.24 and earlier.  As a
+comparison, the term "gigabyte" usually denotes 2^30 bytes.
+
+TYPE OF C-ISAM FILE            7.25 LIMIT    PREVIOUS LIMIT
+--------------------           ----------    --------------
+Fixed-Length Records
+  Maximum data file size:      (2^40) - 1     (2^31) - 1
+  Maximum index file size:     (2^40) - 1     (2^31) - 1
+
+Variable-Length Records
+  Maximum data file size:      (2^40) - 1     (2^31) - 1
+  Maximum index file size:     (2^34) - 1     (2^31) - 1
+
+Maximum transaction file size: (2^63) - 1     (2^31) - 1
+Maximum audit trail file size: (2^63) - 1     (2^31) - 1
+
+Here the maximum data and index file sizes for fixed-length
+and variable-length records are based on a NODESIZE of 512
+bytes. These values double for a 1024 byte NODESIZE.
+
+The new limits assume a 64-bit machine, but they also apply
+to 32-bit machines that support appropriate APIs to access
+large files.  (See the Machine Notes file for details.)
+For 32-bit machines that do not support large-file APIs,
+the values marked "PREVIOUS LIMIT" remain in effect.
+
+The following limits are not changed in this release:
+
+C-ISAM FEATURE                           MAXIMUM IN 7.25
+---------------                          ----------------
+Number of Indexes                        No logical limit
+
+Number of Bytes per Index                120
+
+Number of Columns in a Composite Index   8
+
+Number of Bytes per Row                  32511
+
+Number of Rows                           (2^31) - 1
+
+
+B. Enhancements to C-ISAM Function Library
+
+To avoid a potential compile-time error, the following
+changes have been made to the C-ISAM library.  See
+also the "Documentation Notes" for information about
+the behavior, usage, or documentation of some other
+C-ISAM library functions, such as islogopen().
+
+1. New Prototype for the isindexinfo() Function
+
+In previous versions of C-ISAM, the isindexinfo()
+function in the isam.h file had this prototype:
+
+  int    isindexinfo(isfd, buffer, number)
+         int isfd;
+         struct keydesc *buffer;
+         int number;
+
+The second argument "buffer" could also be a pointer to
+the "dictinfo" structure, depending on the value of the
+"number" argument. Calling isindexinfo() with a pointer
+to "dictinfo" as the second parameter could result in
+a compilation error from a prototype mismatch.
+
+In order to maintain compatibility with existing C-ISAM
+applications, the prototype of function isindexinfo()
+has been changed to the following in this release:
+
+ int    isindexinfo(int isfd, void *buffer, int number);
+
+2. New isdictinfo() and iskeyinfo() Functions
+
+To avoid the same potential problem, two new functions
+in the isam.h file are now provided with the following
+prototypes:
+
+ int    isdictinfo(int isfd, struct dictinfo *buffer);
+
+ int    iskeyinfo(int isfd, struct keydesc *buffer, int number);
+
+The isindexinfo() function internally calls isdictinfo()
+if the value of "number" is zero;  it calls iskeyinfo()
+if the value of "number" is greater than zero.  This
+allows legacy C-ISAM applications to remain compatible
+with Version 7.25.
+
+In this release, C-ISAM applications can also call the
+isdictinfo() and iskeyinfo() functions directly. (Informix
+recommends that you call these new functions, rather than
+isindexinfo(), when you write new C-ISAM applications.)
+
+
+C. New Error Messages
+
+Two new error messages are introduced in this release:
+
+ ERROR      DESCRIPTION AND POSSIBLE CAUSE
+=======    ================================
+ -21501    ISAM error: C-ISAM was unable to insert a row because
+           the file already contains 2^31 - 1 (2147483647) rows.
+
+ -21502    ISAM error: The transaction log file format is
+           incompatible with the C-ISAM version. This could be
+           because the transaction log file was created using
+           an older version of C-ISAM. Please ensure that the
+           transaction log file has been created by a version
+           of C-ISAM that is compatible with the log format.
+
+
+D. New Transaction Log Format
+
+Transaction-file records contain a fixed-length header
+and other information that depends on the transaction type.
+The first record header starts at an offset of 4 bytes
+from the beginnig of the file. (The first 4 bytes of the
+file contains a unique reserved number).
+
+Byte     Number
+Offset   of Bytes          Item
+======   ========          ======================
+  0       2                Length of log record
+
+  2       2                Transaction type
+
+  4       4 (was 2 bytes)  Transaction identification
+
+  8       2                User Identification
+
+ 10       4                Transaction time. measured as
+                           the  number of seconds since
+                           midnight, 1/1/1970
+
+ 14       8 (was 4 bytes)  Offset to previous log record
+
+ 22 + L   8 or 4 (was 4)   Length of previous log record
+
+Pages D-9 and following of "C-ISAM Programmer's Manual"
+describes transaction log file format for C-ISAM 7.24
+and earlier versions. To support larger file sizes, this
+release introduces several changes to that legacy format.
+
+o  A unique reserved number now begins the log file.
+   C-ISAM uses this number to recognize a valid log file.
+   This enables the islogopen() function to avoid opening
+   a transaction log file that contains records that were
+   written by an earlier C-ISAM version.
+
+o  The LG_XID transaction ID is increased to 4 bytes
+   (from 2 bytes in previous releases).
+
+o  The LG_PREV offset of the previous log record is now
+   increased to 8 bytes (from 4 bytes in earlier versions).
+
+o  The LG_PREVLEN offset of the previous log length is
+   now defined as:
+                    LG_PREV+sizeof(IFMX_OFF_T)
+
+   Here the value of the right-hand addend is platform-
+   dependent:
+
+   o  It is 8 bytes on 64-bit platforms and 32-bit
+      platforms that can read large files.
+
+   o  It is 4 bytes on 32-bit platforms that cannot
+      read files larger than 2^31 - 1 bytes.
+
+See the section "New Transaction Log File Format" in the
+Documentation Notes for a listing of the new format.
+
+
+II. INSTALLATION AND REVERSION
+
+If you do not have any version of C-ISAM on your system,
+you can install C-ISAM 7.25 by running the installation
+script and following the prompts.
+
+If some earlier C-ISAM version is present, you also need
+to follow the steps in the next section.
+
+
+A. Migration to C-ISAM 7.25
+
+This release is a seamless upgrade for C-ISAM Version 7.2x
+customers. There are no API changes from the previous
+version of C-ISAM, and no changes in the formats of index
+files, data files, or audit trail files for the following
+migrations:
+
+o  Migrating from a 32-bit C-ISAM to a 64-bit implementation
+   of Version 7.25.
+
+o  Migrating from a 32-bit C-ISAM to a 32-bit implementation
+   that uses special APIs to access files larger than two
+   gigabytes ((2^31) - 1 bytes).
+
+Because of the changes in the transaction log file format,
+however, this version cannot open transaction log files
+that contain transaction records in the legacy format.
+
+To install C-ISAM 7.25 on a system that has files created
+by an earlier release of C-ISAM, follow these steps:
+
+1. Make sure that no programs are using the C-ISAM files.
+
+2. Back up all the index, data, transaction log, and audit
+   trail files.
+
+3. Re-create the transaction log file as an empty file of
+   size zero bytes.
+
+4. Recompile the applications with 7.25 C-ISAM.
+
+As previously noted, C-ISAM applications that were created
+with earlier versions must be recompiled before they can
+take advantage of the new features of Version 7.25.
+
+
+B. Reversion to Earlier Release Versions
+
+1. Make sure that no programs are using the C-ISAM files.
+
+2. Back up all the index, data, transaction log, and audit
+   trail files.
+
+3. Re-create the transaction log file as an empty file
+   of size zero bytes.
+
+4. Recompile the applications with the earlier C-ISAM.
+
+You cannot revert to an older version after a data file,
+index file, audit trail file, or transaction log file
+grows beyond the legacy size limit of 2147483647 bytes.
+
+
+III. CAVEATS
+
+A. Incompatibility with Earlier Transaction Logs
+
+Because of file format differences between this release
+and Version 7.24 (and earlier), it is not possible for
+C-ISAM 7.25 to recover data from a transaction log file
+that was created using older versions of C-ISAM.
+This version of C-ISAM cannot read transaction log files
+that were written in the old format, and older C-ISAM
+releases cannot read transaction logs in the new format.
+
+An application built with 7.25 C-ISAM detects an
+incompatibility and issues an error -21502 (ELOGINCOMPAT)
+if it tries to open a transaction log file that was
+created using older versions of C-ISAM.
+
+Use of versions of the bcheck utility (or of the dblog
+utility) that were provided with C-ISAM Version 7.24 or
+earlier is not supported for files created by this release.
+Similarly, the use of versions of bcheck or dblog that were
+provided with INFORMIX-SE Version 7.24 or earlier is not
+supported for files created with this release of C-ISAM.
+
+Any transaction log file that combines records in both the
+old and new formats is unreadable by any C-ISAM version,
+and therefore cannot be used to recover data. If an older
+version of C-ISAM or INFORMIX-SE writes legacy-format
+records into a Version 7.25 transaction log, then that
+log file becomes corrupt.
+
+
+B. ROWID and Indexes
+
+These are still 4 bytes, as in all earlier releases.
+
+
+C. Open C-ISAM Bugs
+
+There are two bugs currently open against this version
+of C-ISAM on UNIX platforms.
+
+Bug Number   Short Description
+----------   ----------------------------------------
+127187       ISOPEN() OPENS WRONG FILE AFTER CHDIR()
+
+This defect corresponds to PTS bug #6255.
+
+If two files in different directories have the same name, a
+C-ISAM program can make the directory of one of these files
+its current directory and call isopen(), with the filename as
+its first argument, to open the first file.  If the program
+then calls chdir() to make current the directory of the second
+file, isopen() cannot use the filename as its first argument
+to open the second file, because the second call to isopen()
+reopens the first file.
+
+Workaround:
+-----------
+Use the absolute pathname in the first argument of isopen()
+when the filename is not unique.
+
+
+Bug Number   Short Description
+----------   ----------------------------------------
+127188       BEGIN WORK (BW) RECORD GETS LOGGED EVEN IF
+             ISBEGIN() IS NOT THERE
+
+This defect corresponds to PTS bug #18939.
+
+Calling iscommit() or isrollback() when no operation has
+yet been recorded in the transaction log since the current
+transaction began puts the log in an inconsistent state.
+
+Workaround:
+-----------
+Do not call iscommit() or isrollback() before an action
+that results in transaction logging activity has been
+performed within the current transaction.  An "empty"
+transaction is created in the following pseudo-code:
+
+   islogopen() ==> opens the transaction log
+   isbegin()
+   iscommit() ==> dummy commit; there is no work to commit.
+   do_some_work() ==> isbegin() has not been called, but a
+                      transaction log record will be created.
+
+Here no error is issued when iscommit() is invoked, but
+the empty transaction in this sequence of operations might
+lead to subsequent recovery problems.
+
+No other software defects are known in this release
+for UNIX platforms.
+
+
+IV. PTS BUGS FIXED IN THIS RELEASE
+
+A.  Software Defects
+
+The following Informix PTS (Product Tracking System)
+software defects are corrected for UNIX platforms in
+this release of C-ISAM:
+
+NUMBER  SHORT DESCRIPTION
+======  ==============================================
+
+ 74054  CISAM DATA FILE GROWS ON HPUX 10.10 AND CAUSES
+        DATA LOS 5675
+
+ 78621  C-ISAM ON HP-UX 10.20 64 BIT OS CANNOT HANDLE
+        FILE SIZE GREATER THAN 2 GB
+
+101416  CISAM MEMORY LEAK WHEN USING NCHARTYPE INDEXES
+        (I.E. GLS)
+
+117182  SYSTEMS WITH PID ON 4 BYTES CAN LEAD TO RECOVERY
+        FAILURE USING C-ISAM OR SE BECAUSE C-ISAM USES
+        THE PID AS TRANSACTION ID BUT STORES IT IN 2 BYTES
+
+122761  C-ISAM LIMITS THE TRANSACTION LOG FILE TO 2GB, IF
+        THAT LIMIT IS EXCEEDED C-ISAM IGNORES IT AND DATA
+        LOSS AND DATA CORRUPTION OCCURS.
+
+
+B.  Documentation Defects
+
+In addition, the following PTS bugs that had been
+closed as documentation defects are corrected in
+the Documentation Notes to this release of C-ISAM:
+
+NUMBER  SHORT DESCRIPTION
+------  -----------------------------------------
+  5675  LDDBLNULL AND LDFLTNULL RETURN WRONG RESULTS ON
+        MOST MACHINES
+
+  6255  ISOPEN() OPENS WRONG FILE AFTER CHDIR()
+
+  6257  ISFLUSH AFTER ISOPEN W/ISINPUT & ISMANULOCK
+        YIELDS 101
+
+ 18415  ISCOMMIT() RELEASES ALL LOCKS - ALSO IF NOT
+        WITHIN AN TRANSACTION
+
+ 18939  BEGIN WORK (BW) RECORD GETS LOGGED EVEN IF
+        ISBEGIN() IS NOT THERE
+
+ 56518  DOC - CISAM MANUAL 8-55 DOES NOT STATE THAT
+        ISRELEASE ALSO UNLOCKS THE FILE DESCRIPTOR USED
+        AFTER RELEASING ALL LOCKS ON RECORDS
+
+
+
